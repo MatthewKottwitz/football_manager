@@ -4,6 +4,7 @@ from PIL import Image
 from pathlib import Path
 import os
 import time
+from datetime import datetime
 
 # --- 1. FILE PATH SETUP ---
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
@@ -14,99 +15,105 @@ data_file = current_dir / "league_data.csv"
 if logo_path.exists():
     try:
         img = Image.open(logo_path)
-        st.set_page_config(page_title="League Manager", page_icon=img, layout="wide")
+        st.set_page_config(page_title="Sussex League", page_icon=img, layout="wide")
     except Exception:
-        st.set_page_config(page_title="League Manager", page_icon="🏈", layout="wide")
+        st.set_page_config(page_title="Sussex League", page_icon="🏈", layout="wide")
 else:
-    st.set_page_config(page_title="League Manager", page_icon="🏈", layout="wide")
+    st.set_page_config(page_title="Sussex League", page_icon="🏈", layout="wide")
 
 # --- 3. DATA PERSISTENCE FUNCTIONS ---
 def load_data():
     if data_file.exists():
-        return pd.read_csv(data_file)
-    return pd.DataFrame(columns=['Team', 'Wins', 'Losses'])
+        df = pd.read_csv(data_file)
+        # Get the last modified time of the file for the timestamp
+        mod_time = os.path.getmtime(data_file)
+        last_update = datetime.fromtimestamp(mod_time).strftime('%Y-%m-%d %I:%M %p')
+        return df, last_update
+    return pd.DataFrame(columns=['Team', 'Wins', 'Losses']), "Never"
 
 def save_data(df):
     df.to_csv(data_file, index=False)
 
-# Load data into session state
+# Initial load
 if 'league_df' not in st.session_state:
-    st.session_state.league_df = load_data()
+    st.session_state.league_df, st.session_state.last_updated = load_data()
 
-# --- 4. SIDEBAR & ADMIN AUTH ---
+# --- 4. SIDEBAR & SECURITY ---
 with st.sidebar:
     if logo_path.exists():
         st.image(Image.open(logo_path), use_container_width=True)
     
-    st.title("League Admin")
-    admin_password = "sussex2026" 
-    user_password = st.text_input("Enter Admin Password", type="password")
-    is_admin = (user_password == admin_password)
+    st.title("Admin Access")
+    
+    # SECURITY: This pulls the password from Streamlit's "Secrets" vault
+    # instead of being written in the code for everyone on GitHub to see.
+    try:
+        admin_password = st.secrets["admin_password"]
+    except KeyError:
+        st.error("Secret 'admin_password' not set in Streamlit Cloud Settings!")
+        admin_password = None
+
+    user_password = st.text_input("Password", type="password")
+    is_admin = (admin_password and user_password == admin_password)
 
 # --- 5. MAIN CONTENT ---
-st.title("🏈 Sussex Football League Manager")
+st.title("🏈 Sussex Football League")
 
 if is_admin:
-    st.header("Admin Control Panel")
+    st.header("Admin Dashboard")
     
-    # ADD NEW TEAM
-    with st.expander("➕ Add New Team", expanded=False):
-        # We use a unique key to help with clearing
-        new_team = st.text_input("Team Name", key="new_team_input")
-        if st.button("Confirm Add Team"):
-            if new_team and new_team not in st.session_state.league_df['Team'].values:
-                new_row = pd.DataFrame({'Team': [new_team], 'Wins': [0], 'Losses': [0]})
+    # Form: Add New Team
+    with st.expander("➕ Add New Team"):
+        new_name = st.text_input("Enter Team Name", key="team_in")
+        if st.button("Save Team"):
+            if new_name and new_name not in st.session_state.league_df['Team'].values:
+                new_row = pd.DataFrame({'Team': [new_name], 'Wins': [0], 'Losses': [0]})
                 st.session_state.league_df = pd.concat([st.session_state.league_df, new_row], ignore_index=True)
                 save_data(st.session_state.league_df)
-                
-                # Feedback
-                st.success(f"✅ {new_team} added successfully!")
-                time.sleep(1) # Give user a moment to see the message
-                st.rerun() # This clears the text_input box
+                st.success(f"Success! {new_name} has been added.")
+                time.sleep(1)
+                st.rerun()
             else:
-                st.error("Error: Team already exists or name is empty.")
+                st.error("Invalid name or team already exists.")
 
-    # UPDATE SCORES
+    # Form: Update Scores
     if not st.session_state.league_df.empty:
-        with st.expander("📝 Update Scores", expanded=False):
-            team_to_edit = st.selectbox("Select Team", st.session_state.league_df['Team'])
-            current_row = st.session_state.league_df[st.session_state.league_df['Team'] == team_to_edit].iloc[0]
+        with st.expander("📝 Update Scores"):
+            team_sel = st.selectbox("Select Team", st.session_state.league_df['Team'])
+            row = st.session_state.league_df[st.session_state.league_df['Team'] == team_sel].iloc[0]
             
-            col1, col2 = st.columns(2)
-            with col1:
-                new_wins = st.number_input("Wins", min_value=0, value=int(current_row['Wins']), step=1)
-            with col2:
-                new_losses = st.number_input("Losses", min_value=0, value=int(current_row['Losses']), step=1)
+            c1, c2 = st.columns(2)
+            w = c1.number_input("Total Wins", min_value=0, value=int(row['Wins']))
+            l = c2.number_input("Total Losses", min_value=0, value=int(row['Losses']))
             
-            if st.button("Update League Table"):
-                idx = st.session_state.league_df.index[st.session_state.league_df['Team'] == team_to_edit][0]
-                st.session_state.league_df.at[idx, 'Wins'] = new_wins
-                st.session_state.league_df.at[idx, 'Losses'] = new_losses
+            if st.button("Update Scores"):
+                idx = st.session_state.league_df.index[st.session_state.league_df['Team'] == team_sel][0]
+                st.session_state.league_df.at[idx, 'Wins'] = w
+                st.session_state.league_df.at[idx, 'Losses'] = l
                 save_data(st.session_state.league_df)
-                
-                st.success(f"✅ Updated {team_to_edit} scores!")
+                st.success(f"Scores updated for {team_sel}!")
                 time.sleep(1)
                 st.rerun()
 
-    # RESET LEAGUE
-    with st.expander("🚨 Danger Zone"):
-        st.write("This will permanently delete all teams and scores.")
-        if st.button("Wipe All Data"):
+    # Form: Reset
+    with st.expander("🚨 Reset Data"):
+        if st.button("Delete Everything"):
             st.session_state.league_df = pd.DataFrame(columns=['Team', 'Wins', 'Losses'])
             save_data(st.session_state.league_df)
-            st.warning("League data cleared.")
+            st.warning("All data deleted.")
             time.sleep(1)
             st.rerun()
 else:
-    # Auto-refresh data for players to see the latest PC updates
-    st.session_state.league_df = load_data()
-    st.info("Log in as Admin to manage the league.")
+    # Auto-sync data for non-admins
+    st.session_state.league_df, st.session_state.last_updated = load_data()
+    st.info("Log in as Admin to edit the standings.")
 
 # --- 6. DISPLAY TABLE ---
 st.subheader("Current Standings")
 if st.session_state.league_df.empty:
-    st.write("The league is currently empty.")
+    st.write("No data available yet.")
 else:
-    # Sort by Wins (Highest First), then by Losses (Lowest First)
-    sorted_df = st.session_state.league_df.sort_values(by=['Wins', 'Losses'], ascending=[False, True])
-    st.table(sorted_df)
+    # Sort by Wins (High to Low), then Losses (Low to High)
+    display_df = st.session_state.league_df.sort_values(by=['Wins', 'Losses'], ascending=[False, True])
+    st.table(display_df)
+    st.caption(f"🕒 Last data update: {st.session_state.last_updated}")
