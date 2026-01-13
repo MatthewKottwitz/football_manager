@@ -14,7 +14,7 @@ data_file = current_dir / "league_data.csv"
 user_file = current_dir / "captains.csv"
 
 # Encryption tool
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # --- 2. DATA FUNCTIONS ---
 def load_league_data():
@@ -131,3 +131,4 @@ if st.session_state.league_df.empty:
 else:
     st.table(st.session_state.league_df.sort_values(by=['Wins', 'Losses'], ascending=[False, True]))
     st.caption(f"🕒 Last Update: {st.session_state.last_updated}")
+
