@@ -6,6 +6,15 @@ from scheduler import generate_schedule
 from PIL import Image
 import os
 
+# Make sure this is at the VERY top of your script
+if logo_path.exists():
+    img = Image.open(logo_path)
+    st.set_page_config(
+        page_title="League Manager",
+        page_icon=img, # Passing the actual PIL object is better than the path
+        layout="wide"
+    )
+
 # This finds the exact folder where app.py is sitting
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
 logo_path = current_dir / "packers_bears_logo.PNG"
