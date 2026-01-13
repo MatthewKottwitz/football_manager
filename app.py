@@ -3,9 +3,9 @@ import pandas as pd
 from datetime import date
 from scheduler import generate_schedule
 
-st.set_page_config(page_title="Football Scheduler", layout="wide")
+st.set_page_config(page_title="Football Scheduler", layout="wide", page_icon="🏈")
 
-st.title("⚽ Football League Manager")
+st.title("🏈 Football League Manager")
 
 # Sidebar - Setup
 with st.sidebar:
@@ -57,4 +57,5 @@ if 'df' in st.session_state:
     csv = edited_df.to_csv(index=False).encode('utf-8')
     st.download_button("📥 Download Schedule (CSV)", csv, "schedule.csv", "text/csv")
 else:
+
     st.write("Enter teams in the sidebar and click 'Generate' to begin.")
