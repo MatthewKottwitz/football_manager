@@ -3,11 +3,12 @@ import pandas as pd
 from PIL import Image
 from pathlib import Path
 import os
+import time
 
 # --- 1. FILE PATH SETUP ---
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
 logo_path = current_dir / "packers_bears_logo.PNG"
-data_file = current_dir / "league_data.csv" # This is our shared database
+data_file = current_dir / "league_data.csv"
 
 # --- 2. PAGE CONFIGURATION ---
 if logo_path.exists():
@@ -19,18 +20,16 @@ if logo_path.exists():
 else:
     st.set_page_config(page_title="League Manager", page_icon="🏈", layout="wide")
 
-# --- 3. DATA LOADING LOGIC (THE SYNC) ---
+# --- 3. DATA PERSISTENCE FUNCTIONS ---
 def load_data():
     if data_file.exists():
         return pd.read_csv(data_file)
-    else:
-        # Create a blank file if it doesn't exist
-        return pd.DataFrame(columns=['Team', 'Wins', 'Losses'])
+    return pd.DataFrame(columns=['Team', 'Wins', 'Losses'])
 
 def save_data(df):
     df.to_csv(data_file, index=False)
 
-# Load the data into the app session
+# Load data into session state
 if 'league_df' not in st.session_state:
     st.session_state.league_df = load_data()
 
@@ -50,20 +49,27 @@ st.title("🏈 Sussex Football League Manager")
 if is_admin:
     st.header("Admin Control Panel")
     
-    with st.expander("➕ Add New Team"):
-        new_team = st.text_input("Team Name")
-        if st.button("Add Team"):
+    # ADD NEW TEAM
+    with st.expander("➕ Add New Team", expanded=False):
+        # We use a unique key to help with clearing
+        new_team = st.text_input("Team Name", key="new_team_input")
+        if st.button("Confirm Add Team"):
             if new_team and new_team not in st.session_state.league_df['Team'].values:
                 new_row = pd.DataFrame({'Team': [new_team], 'Wins': [0], 'Losses': [0]})
                 st.session_state.league_df = pd.concat([st.session_state.league_df, new_row], ignore_index=True)
-                save_data(st.session_state.league_df) # SAVE TO FILE
-                st.success(f"Added {new_team}")
-                st.rerun()
+                save_data(st.session_state.league_df)
+                
+                # Feedback
+                st.success(f"✅ {new_team} added successfully!")
+                time.sleep(1) # Give user a moment to see the message
+                st.rerun() # This clears the text_input box
+            else:
+                st.error("Error: Team already exists or name is empty.")
 
+    # UPDATE SCORES
     if not st.session_state.league_df.empty:
-        with st.expander("📝 Update Scores"):
+        with st.expander("📝 Update Scores", expanded=False):
             team_to_edit = st.selectbox("Select Team", st.session_state.league_df['Team'])
-            # Set default values to current scores
             current_row = st.session_state.league_df[st.session_state.league_df['Team'] == team_to_edit].iloc[0]
             
             col1, col2 = st.columns(2)
@@ -72,28 +78,35 @@ if is_admin:
             with col2:
                 new_losses = st.number_input("Losses", min_value=0, value=int(current_row['Losses']), step=1)
             
-            if st.button("Save Score"):
+            if st.button("Update League Table"):
                 idx = st.session_state.league_df.index[st.session_state.league_df['Team'] == team_to_edit][0]
                 st.session_state.league_df.at[idx, 'Wins'] = new_wins
                 st.session_state.league_df.at[idx, 'Losses'] = new_losses
-                save_data(st.session_state.league_df) # SAVE TO FILE
-                st.success(f"Updated {team_to_edit}")
+                save_data(st.session_state.league_df)
+                
+                st.success(f"✅ Updated {team_to_edit} scores!")
+                time.sleep(1)
                 st.rerun()
 
+    # RESET LEAGUE
     with st.expander("🚨 Danger Zone"):
-        if st.button("Reset Entire League"):
+        st.write("This will permanently delete all teams and scores.")
+        if st.button("Wipe All Data"):
             st.session_state.league_df = pd.DataFrame(columns=['Team', 'Wins', 'Losses'])
-            save_data(st.session_state.league_df) # SAVE TO FILE
+            save_data(st.session_state.league_df)
+            st.warning("League data cleared.")
+            time.sleep(1)
             st.rerun()
 else:
-    # Refresh data for non-admins to ensure they see the latest PC updates
+    # Auto-refresh data for players to see the latest PC updates
     st.session_state.league_df = load_data()
-    st.info("Log in as Admin to edit scores.")
+    st.info("Log in as Admin to manage the league.")
 
 # --- 6. DISPLAY TABLE ---
 st.subheader("Current Standings")
 if st.session_state.league_df.empty:
-    st.write("No teams added yet.")
+    st.write("The league is currently empty.")
 else:
-    sorted_df = st.session_state.league_df.sort_values(by='Wins', ascending=False)
+    # Sort by Wins (Highest First), then by Losses (Lowest First)
+    sorted_df = st.session_state.league_df.sort_values(by=['Wins', 'Losses'], ascending=[False, True])
     st.table(sorted_df)
