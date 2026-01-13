@@ -2,6 +2,30 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from scheduler import generate_schedule
+from PIL import Image
+import os
+
+# Get the directory that app.py is in
+img_dir = os.path.dirname(__file__)
+image_path = os.path.join(img_dir, "logo.png")
+
+try:
+    # Open the image using Pillow
+    logo_image = Image.open(image_path)
+    
+    st.set_page_config(
+        page_title="League Manager",
+        page_icon=logo_image, # This sets the browser tab icon
+        layout="wide"
+    )
+    
+    # Also show it in the sidebar
+    st.sidebar.image(logo_image, width=150)
+
+except Exception as e:
+    # If the file is still being "stubborn", fallback to emoji
+    st.set_page_config(page_title="League Manager", page_icon="🏈")
+    st.sidebar.warning("Logo file not found, using default.")
 
 st.set_page_config(page_title="Football Scheduler", layout="wide")
 st.sidebar.image("packers_bears_logo.png", width=100)
@@ -60,4 +84,5 @@ if 'df' in st.session_state:
 else:
 
     st.write("Enter teams in the sidebar and click 'Generate' to begin.")
+
 
