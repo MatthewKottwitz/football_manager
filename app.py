@@ -49,16 +49,43 @@ with st.sidebar:
 # --- 4. MAIN APP CONTENT ---
 st.title("🏈 Sussex Football League Manager")
 
-# Example of how to hide "Admin Only" features
 if is_admin:
     st.header("Admin Control Panel")
+    
+    # Create two columns for buttons
     col1, col2 = st.columns(2)
+    
     with col1:
         if st.button("Generate New Schedule"):
-            st.write("Generating...")
+            st.write("Schedule generated!")
+            # Add your schedule generation logic here
+
     with col2:
-        if st.button("Reset All Scores"):
-            st.warning("Are you sure?")
+        # Check if we are in the "confirming" state
+        if 'confirm_reset' not in st.session_state:
+            st.session_state.confirm_reset = False
+
+        if not st.session_state.confirm_reset:
+            if st.button("Reset All Scores"):
+                st.session_state.confirm_reset = True
+                st.rerun() # Refresh to show the confirmation buttons
+        else:
+            # This shows ONLY after they click the first 'Reset' button
+            st.warning("⚠️ Are you absolutely sure? This cannot be undone.")
+            sub_col1, sub_col2 = st.columns(2)
+            
+            with sub_col1:
+                if st.button("✅ YES, Reset Everything"):
+                    # --- PLACE YOUR RESET LOGIC HERE ---
+                    st.success("All scores have been wiped.")
+                    st.session_state.confirm_reset = False # Reset the state
+                    # st.rerun() 
+                    
+            with sub_col2:
+                if st.button("❌ NO, Cancel"):
+                    st.session_state.confirm_reset = False
+                    st.rerun()
+
 else:
     # What the regular parents/players see
     st.info("Welcome! View the current standings and schedule below.")
@@ -73,3 +100,4 @@ data = {
 }
 df = pd.DataFrame(data)
 st.table(df)
+
