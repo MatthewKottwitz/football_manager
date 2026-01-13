@@ -8,7 +8,7 @@ import os
 
 # This finds the exact folder where app.py is sitting
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
-logo_path = current_dir / "packers_bears_logo.png"
+logo_path = current_dir / "packers_bears_logo.PNG"
 
 # 1. Set Page Config (Always first!)
 st.set_page_config(page_title="Football Manager", layout="wide", page_icon="⚽")
@@ -78,6 +78,7 @@ if 'df' in st.session_state:
 else:
 
     st.write("Enter teams in the sidebar and click 'Generate' to begin.")
+
 
 
 
