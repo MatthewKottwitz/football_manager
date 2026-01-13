@@ -1,94 +1,75 @@
 import streamlit as st
 import pandas as pd
-from pathlib import Path
-from datetime import date
-from scheduler import generate_schedule
 from PIL import Image
+from pathlib import Path
 import os
 
-# This finds the exact folder where app.py is sitting
+# --- 1. FILE PATH SETUP ---
+# This finds the folder where app.py lives
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
+# We use the EXACT name you found on GitHub (all lowercase with .PNG)
 logo_path = current_dir / "packers_bears_logo.PNG"
 
+# --- 2. PAGE CONFIGURATION (Must be the first Streamlit command) ---
 if logo_path.exists():
-    img = Image.open(logo_path)
-    st.set_page_config(
-        page_title="League Manager",
-        page_icon=img, # Passing the actual PIL object is better than the path
-        layout="wide"
-    )
-
-# 1. Set Page Config (Always first!)
-st.set_page_config(page_title="Football Manager", layout="wide", page_icon="⚽")
-
-# 2. Sidebar Logo
-if logo_path.exists():
-    image = Image.open(logo_path)
-    st.sidebar.image(image, width=150)
+    try:
+        img = Image.open(logo_path)
+        st.set_page_config(
+            page_title="Sussex Football League",
+            page_icon=img,
+            layout="wide"
+        )
+    except Exception:
+        # Fallback if the image file is corrupted
+        st.set_page_config(page_title="Sussex Football League", page_icon="🏈", layout="wide")
 else:
-    # This debug line will tell you exactly what the app sees
-    st.sidebar.error("Logo file not found.")
-    st.sidebar.write(f"Looking for: {logo_path}")
+    # Fallback if the file is missing
+    st.set_page_config(page_title="Sussex Football League", page_icon="🏈", layout="wide")
 
-st.set_page_config(page_title="Football Scheduler", layout="wide")
-
-st.title("🏈 Football League Manager")
-
-# Sidebar - Setup
+# --- 3. SIDEBAR & LOGO DISPLAY ---
 with st.sidebar:
-    st.header("League Configuration")
-    team_input = st.text_area("Enter Team Names (one per line):", 
-                             value="Tigers\nLions\nEagles\nBears")
-    start_date = st.date_input("Start Date", date.today())
+    if logo_path.exists():
+        st.image(Image.open(logo_path), use_container_width=True)
     
-    if st.button("Generate/Reset Schedule"):
-        teams = [t.strip() for t in team_input.split('\n') if t.strip()]
-        data = generate_schedule(teams, start_date)
-        st.session_state.df = pd.DataFrame(data)
-
-# Main App Logic
-if 'df' in st.session_state:
-    st.subheader("Match Schedule & Scores")
-    st.info("Edit the 'Home Score' and 'Away Score' columns below to update standings.")
-    
-    # Editable Table
-    edited_df = st.data_editor(st.session_state.df, use_container_width=True, hide_index=True)
-    st.session_state.df = edited_df
-
-    # Calculate Standings
+    st.title("League Admin")
     st.divider()
-    st.subheader("League Standings")
     
-    # Simple Standing Logic inside App for speed
-    stats = {}
-    teams = pd.concat([edited_df['Home Team'], edited_df['Away Team']]).unique()
-    for t in teams: stats[t] = {'GP':0, 'W':0, 'D':0, 'L':0, 'Pts':0}
+    # --- ADMIN PASSWORD SECTION ---
+    # Change "sussex2026" to whatever password you want!
+    admin_password = "sussex2026" 
+    user_password = st.text_input("Enter Admin Password", type="password")
     
-    for _, r in edited_df.iterrows():
-        stats[r['Home Team']]['GP'] += 1
-        stats[r['Away Team']]['GP'] += 1
-        if r['Home Score'] > r['Away Score']:
-            stats[r['Home Team']]['W'] += 1; stats[r['Home Team']]['Pts'] += 3
-            stats[r['Away Team']]['L'] += 1
-        elif r['Away Score'] > r['Home Score']:
-            stats[r['Away Team']]['W'] += 1; stats[r['Away Team']]['Pts'] += 3
-            stats[r['Home Team']]['L'] += 1
-        else:
-            stats[r['Home Team']]['D'] += 1; stats[r['Home Team']]['Pts'] += 1
-            stats[r['Away Team']]['D'] += 1; stats[r['Away Team']]['Pts'] += 1
-            
-    standings_df = pd.DataFrame.from_dict(stats, orient='index').sort_values('Pts', ascending=False)
-    st.table(standings_df)
+    is_admin = (user_password == admin_password)
+    
+    if is_admin:
+        st.success("Admin Access Granted")
+    else:
+        st.info("Enter password to unlock editing tools.")
 
-    # Download Option
-    csv = edited_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download Schedule (CSV)", csv, "schedule.csv", "text/csv")
+# --- 4. MAIN APP CONTENT ---
+st.title("🏈 Sussex Football League Manager")
+
+# Example of how to hide "Admin Only" features
+if is_admin:
+    st.header("Admin Control Panel")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Generate New Schedule"):
+            st.write("Generating...")
+    with col2:
+        if st.button("Reset All Scores"):
+            st.warning("Are you sure?")
 else:
+    # What the regular parents/players see
+    st.info("Welcome! View the current standings and schedule below.")
 
-    st.write("Enter teams in the sidebar and click 'Generate' to begin.")
-
-
-
-
-
-
+# --- 5. YOUR DATA LOGIC (Example Table) ---
+st.subheader("Current Standings")
+# (This is where your pandas dataframe code would go)
+data = {
+    'Team': ['Packers', 'Bears', 'Lions', 'Vikings'],
+    'Wins': [10, 2, 5, 4],
+    'Losses': [0, 8, 5, 6]
+}
+df = pd.DataFrame(data)
+st.table(df)
