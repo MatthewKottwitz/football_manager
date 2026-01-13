@@ -39,6 +39,7 @@ if 'captains_df' not in st.session_state:
     st.session_state.captains_df = load_captains()
 
 # --- 3. SIDEBAR NAVIGATION ---
+auth_level = None
 with st.sidebar:
     if logo_path.exists():
         st.image(Image.open(logo_path), use_container_width=True)
@@ -124,3 +125,4 @@ if st.session_state.league_df.empty:
 else:
     st.table(st.session_state.league_df.sort_values(by=['Wins', 'Losses'], ascending=[False, True]))
     st.caption(f"🕒 Last Update: {st.session_state.last_updated}")
+
