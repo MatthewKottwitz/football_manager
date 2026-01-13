@@ -3,7 +3,8 @@ import pandas as pd
 from datetime import date
 from scheduler import generate_schedule
 
-st.set_page_config(page_title="Football Scheduler", layout="wide", page_icon="🏈")
+st.set_page_config(page_title="Football Scheduler", layout="wide")
+st.sidebar.image("packers_bears_logo.png", width=100)
 
 st.title("🏈 Football League Manager")
 
@@ -59,3 +60,4 @@ if 'df' in st.session_state:
 else:
 
     st.write("Enter teams in the sidebar and click 'Generate' to begin.")
+
