@@ -1,7 +1,5 @@
 streamlit
-
 pandas
-
 Pillow
-
 passlib
+bcrypt
